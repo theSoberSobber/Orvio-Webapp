@@ -278,12 +278,12 @@ export default function Dashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-4">
-        <div className="flex justify-center items-center">
-          <TabsList className="bg-[#1a1d24] border-0">
-            <TabsTrigger className="px-4" value="overview">Overview</TabsTrigger>
-            <TabsTrigger className="px-4" value="messaging">Messaging</TabsTrigger>
-          </TabsList>
-        </div>
+          <div className="flex justify-center w-full">
+            <TabsList className="bg-[#1a1d24] border-0 w-[200px]">
+              <TabsTrigger value="overview" className="w-[100px]">Overview</TabsTrigger>
+              <TabsTrigger value="messaging" className="w-[100px]">Messaging</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="overview" className="space-y-4">
             <div className="flex justify-between items-center">
