@@ -6,13 +6,12 @@ import "@/styles/prism.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/auth-context";
-import { siteConfig } from "./metadata";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Orvio - Monetize Your SMS Plan",
-  description: siteConfig.description,
+  title: "OTP Authentication",
+  description: "Modern OTP-based authentication system",
 };
 
 export default function RootLayout({
@@ -21,17 +20,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          forcedTheme="dark"
+          defaultTheme="system"
+          enableSystem
           disableTransitionOnChange
         >
           <AuthProvider>
-            <Toaster richColors position="top-center" theme="dark" />
+            <Toaster richColors position="top-center" />
             {children}
           </AuthProvider>
         </ThemeProvider>
