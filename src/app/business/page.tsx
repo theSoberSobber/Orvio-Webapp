@@ -298,7 +298,7 @@ const client = new OrvioClient('your_api_key');`}
                       <h5 className="text-sm font-medium text-slate-400 mb-2">Request</h5>
                       <CodeBlock 
                         language="bash"
-                        code={`curl -X POST https://orvio.1110777.xyz/auth/refresh \\
+                        code={`curl -X POST https://backend-orvio.1110777.xyz/auth/refresh \\
   -H "Content-Type: application/json" \\
   -d '{"refreshToken": "your_api_key"}'`}
                       />
@@ -349,11 +349,12 @@ const client = new OrvioClient('your_api_key');`}
                       <h5 className="text-sm font-medium text-slate-400 mb-2">Request</h5>
                       <CodeBlock 
                         language="bash"
-                        code={`curl -X POST https://orvio.1110777.xyz/service/sendOtp \\
+                        code={`curl -X POST https://backend-orvio.1110777.xyz/service/sendOtp \\
   -H "Authorization: Bearer your_access_token" \\
   -H "Content-Type: application/json" \\
   -d '{
     "phoneNumber": "+1234567890",
+    "orgName": "Orvio",
     "reportingCustomerWebhook": "https://your-server.com/webhook",
     "reportingCustomerWebhookSecret": "your_webhook_secret"
   }'`}
@@ -403,7 +404,7 @@ const client = new OrvioClient('your_api_key');`}
                       <h5 className="text-sm font-medium text-slate-400 mb-2">Request</h5>
                       <CodeBlock 
                         language="bash"
-                        code={`curl -X POST https://orvio.1110777.xyz/service/verifyOtp \\
+                        code={`curl -X POST https://backend-orvio.1110777.xyz/service/verifyOtp \\
   -H "Authorization: Bearer your_access_token" \\
   -H "Content-Type: application/json" \\
   -d '{
