@@ -105,7 +105,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="container mx-auto px-4 pt-8 pb-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
+            <div className="space-y-6 pl-4 md:pl-8">
               <h1 className="text-4xl md:text-5xl font-bold text-white">
                 Transform Your Android 📱 into a{" "}
                 <span className="text-blue-400"> 💰 Making Machine 🤑</span>

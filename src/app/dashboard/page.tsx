@@ -41,6 +41,10 @@ interface Stats {
       refreshToken: string
     }>
   }
+  credits: {
+    balance: number
+    mode: string
+  }
 }
 
 interface ApiKey {
@@ -73,6 +77,7 @@ export default function Dashboard() {
   const [stats, setStats] = React.useState<Stats | null>(null)
   const [apiKeys, setApiKeys] = React.useState<ApiKey[]>([])
   const [newKeyName, setNewKeyName] = React.useState("")
+  const [orgName, setOrgName] = React.useState("")
   const [selectedApiKey, setSelectedApiKey] = React.useState<string>("")
   const [reportingWebhook, setReportingWebhook] = React.useState("")
   const [reportingSecret, setReportingSecret] = React.useState("")
@@ -81,6 +86,9 @@ export default function Dashboard() {
   const [phoneNumber, setPhoneNumber] = React.useState("")
   const [isPhoneValid, setIsPhoneValid] = React.useState(false)
   const [isWebhookValid, setIsWebhookValid] = React.useState(false)
+  const [secondsUntilRefresh, setSecondsUntilRefresh] = React.useState(30)
+  const refreshTimerRef = React.useRef<NodeJS.Timeout | null>(null)
+  const [orgNameForTest, setOrgNameForTest] = React.useState("")
 
   const api = useAuthApi({
     accessToken: accessToken!,
@@ -115,9 +123,17 @@ export default function Dashboard() {
 
     try {
       setLoading(true)
-      await api.post("/auth/apiKey/createNew", { name: newKeyName })
+      const payload: { name: string; orgName?: string } = { name: newKeyName }
+      
+      // Add organization name if provided
+      if (orgName.trim()) {
+        payload.orgName = orgName.trim()
+      }
+      
+      await api.post("/auth/apiKey/createNew", payload)
       toast.success("API key created successfully")
       setNewKeyName("")
+      setOrgName("")
       setModalOpen(false)
       fetchApiKeys()
       fetchStats()
@@ -147,6 +163,7 @@ export default function Dashboard() {
         phoneNumber: string
         reportingWebhook?: string
         reportingSecret?: string
+        orgName?: string
       } = { phoneNumber }
 
       // Only add webhook and secret if webhook is provided
@@ -155,6 +172,10 @@ export default function Dashboard() {
         if (reportingSecret) {
           payload.reportingSecret = reportingSecret
         }
+      }
+
+      if (orgNameForTest.trim()) {
+        payload.orgName = orgNameForTest.trim()
       }
 
       const response = await api.post<ApiResponse<{ transactionId: string }>>(
@@ -200,6 +221,33 @@ export default function Dashboard() {
     }
   }
 
+  const resetRefreshTimer = () => {
+    setSecondsUntilRefresh(30)
+  }
+
+  const startRefreshTimer = () => {
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current)
+    }
+    
+    refreshTimerRef.current = setInterval(() => {
+      setSecondsUntilRefresh((prev) => {
+        if (prev <= 1) {
+          fetchStats()
+          return 30
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const refreshData = () => {
+    fetchStats()
+    fetchApiKeys()
+    resetRefreshTimer()
+    toast.success("Stats refreshed")
+  }
+
   React.useEffect(() => {
     if (!isLoading && !accessToken) {
       router.push("/signin")
@@ -209,8 +257,18 @@ export default function Dashboard() {
     if (!isLoading && accessToken) {
       fetchStats()
       fetchApiKeys()
+      startRefreshTimer()
     }
   }, [isLoading, accessToken])
+
+  // Cleanup timer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current)
+      }
+    }
+  }, [])
 
   if (isLoading) {
     return <Loader fullScreen={false} text="Loading your dashboard..." />
@@ -218,23 +276,31 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="w-full max-w-[800px] mx-auto px-6 pt-24 pb-8">
+      <div className="w-full max-w-[800px] mx-auto px-6 pt-4 pb-8">
         {/* Stats Cards with Refresh Button */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-semibold text-white">Dashboard</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              fetchStats()
-              fetchApiKeys()
-              toast.success("Stats refreshed")
-            }}
-            title="Refresh stats"
-            className="hover:bg-[#1a1d24]"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <span className="text-lg mr-2">💰</span>
+              <span className="font-medium">{stats?.credits?.balance ?? 0}</span>
+              <span className="text-sm text-muted-foreground ml-1">
+                ({stats?.credits?.mode ?? 'loading'} mode)
+              </span>
+              <div className="ml-2 text-xs text-muted-foreground">
+                refreshing in {secondsUntilRefresh}s
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={refreshData}
+              title="Refresh stats"
+              className="hover:bg-[#1a1d24]"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
@@ -278,14 +344,33 @@ export default function Dashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-4">
-        <div className="flex justify-center items-center">
-          <TabsList className="bg-[#1a1d24] border-0">
-            <TabsTrigger className="px-4" value="overview">Overview</TabsTrigger>
-            <TabsTrigger className="px-4" value="messaging">Messaging</TabsTrigger>
-          </TabsList>
-        </div>
+          <div className="flex justify-center w-full mb-4">
+            <TabsList className="bg-[#1a1d24] border-0 mx-auto">
+              <TabsTrigger className="px-8" value="overview">Overview</TabsTrigger>
+              <TabsTrigger className="px-8" value="messaging">Messaging</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="overview" className="space-y-4">
+            <Card className="bg-[#1a1d24] border-0">
+              <CardHeader>
+                <CardTitle>Credit Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-4">
+                  <div className="text-3xl">💰</div>
+                  <div>
+                    <div className="text-2xl font-bold">{stats?.credits?.balance ?? 0} credits</div>
+                    <div className="text-muted-foreground">Mode: {stats?.credits?.mode ?? 'loading'}</div>
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Credits are used to send messages through the Orvio platform. Your credit balance and mode 
+                  determine how many messages you can send.
+                </div>
+              </CardContent>
+            </Card>
+            
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-white">API Keys</h2>
               <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -303,6 +388,16 @@ export default function Dashboard() {
                         value={newKeyName}
                         onChange={(e) => setNewKeyName(e.target.value)}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Organization name (optional)"
+                        value={orgName}
+                        onChange={(e) => setOrgName(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        If provided, the organization name will be associated with this API key
+                      </p>
                     </div>
                     <Button onClick={createApiKey} disabled={loading || !newKeyName.trim()}>
                       {loading ? "Creating..." : "Create"}
@@ -364,6 +459,15 @@ export default function Dashboard() {
                     value={phoneNumber} 
                     onChange={setPhoneNumber}
                     onValidationChange={setIsPhoneValid}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Organization Name (Optional)</label>
+                  <Input
+                    placeholder="Enter organization name"
+                    value={orgNameForTest}
+                    onChange={(e) => setOrgNameForTest(e.target.value)}
                   />
                 </div>
 

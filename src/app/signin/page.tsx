@@ -54,7 +54,7 @@ export default function SignIn() {
         `${API_CONFIG.BASE_URL}/auth/verifyOtp`,
         {
           transactionId,
-          otp,
+          userInputOtp: otp,
         }
       )
       const { accessToken, refreshToken } = response.data
