@@ -13,6 +13,12 @@ import { Copy, Key, MessageSquare, Smartphone, Users, Loader2, RefreshCw } from 
 import { PhoneInput } from "@/components/phone-input"
 import { useRouter } from "next/navigation"
 import { Loader } from "@/components/ui/loader"
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 
 interface Stats {
   provider: {
@@ -44,6 +50,7 @@ interface Stats {
   credits: {
     balance: number
     mode: string
+    cashbackPoints: number
   }
 }
 
@@ -82,6 +89,7 @@ export default function Dashboard() {
   const [reportingWebhook, setReportingWebhook] = React.useState("")
   const [reportingSecret, setReportingSecret] = React.useState("")
   const [loading, setLoading] = React.useState(false)
+  const [updatingCreditMode, setUpdatingCreditMode] = React.useState(false)
   const [modalOpen, setModalOpen] = React.useState(false)
   const [phoneNumber, setPhoneNumber] = React.useState("")
   const [isPhoneValid, setIsPhoneValid] = React.useState(false)
@@ -89,6 +97,7 @@ export default function Dashboard() {
   const [secondsUntilRefresh, setSecondsUntilRefresh] = React.useState(30)
   const refreshTimerRef = React.useRef<NodeJS.Timeout | null>(null)
   const [orgNameForTest, setOrgNameForTest] = React.useState("")
+  const [openCreditModeDialog, setOpenCreditModeDialog] = React.useState(false)
 
   const api = useAuthApi({
     accessToken: accessToken!,
@@ -248,6 +257,23 @@ export default function Dashboard() {
     toast.success("Stats refreshed")
   }
 
+  const setCreditMode = async (mode: string) => {
+    try {
+      setUpdatingCreditMode(true)
+      await api.patch("/service/creditMode", { mode })
+      
+      // Update stats to reflect the new credit mode
+      fetchStats()
+      toast.success(`Credit mode updated to ${mode}`)
+    } catch (error) {
+      console.error("Error updating credit mode:", error)
+      toast.error("Failed to update credit mode")
+    } finally {
+      setUpdatingCreditMode(false)
+      setOpenCreditModeDialog(false)
+    }
+  }
+
   React.useEffect(() => {
     if (!isLoading && !accessToken) {
       router.push("/signin")
@@ -284,9 +310,26 @@ export default function Dashboard() {
             <div className="flex items-center">
               <span className="text-lg mr-2">💰</span>
               <span className="font-medium">{stats?.credits?.balance ?? 0}</span>
-              <span className="text-sm text-muted-foreground ml-1">
-                ({stats?.credits?.mode ?? 'loading'} mode)
-              </span>
+              <DropdownMenu open={openCreditModeDialog} onOpenChange={setOpenCreditModeDialog}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="link" disabled={updatingCreditMode} className="ml-1 h-6 p-0">
+                    <span className="text-sm text-muted-foreground">
+                      ({stats?.credits?.mode ?? 'loading'})
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem key="direct" onClick={() => setCreditMode("direct")}>
+                    Direct
+                  </DropdownMenuItem>
+                  <DropdownMenuItem key="moderate" onClick={() => setCreditMode("moderate")}>
+                    Moderate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem key="strict" onClick={() => setCreditMode("strict")}>
+                    Strict
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <div className="ml-2 text-xs text-muted-foreground">
                 refreshing in {secondsUntilRefresh}s
               </div>
@@ -357,17 +400,99 @@ export default function Dashboard() {
                 <CardTitle>Credit Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <div className="text-3xl">💰</div>
-                  <div>
-                    <div className="text-2xl font-bold">{stats?.credits?.balance ?? 0} credits</div>
-                    <div className="text-muted-foreground">Mode: {stats?.credits?.mode ?? 'loading'}</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-3xl">💰</div>
+                    <div>
+                      <div className="text-2xl font-bold">{stats?.credits?.balance ?? 0}</div>
+                      <div className="text-muted-foreground">Available Credits</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-3xl">💵</div>
+                    <div>
+                      <div className="text-2xl font-bold">{stats?.credits?.cashbackPoints ?? 0}</div>
+                      <div className="text-muted-foreground">Cashback Points</div>
+                    </div>
                   </div>
                 </div>
+                
+                <div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Credit Mode:</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          disabled={updatingCreditMode}
+                          className="capitalize"
+                        >
+                          {stats?.credits?.mode ?? 'loading'}
+                          {updatingCreditMode && (
+                            <Loader2 className="ml-2 h-3 w-3 animate-spin" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem key="direct" onClick={() => setCreditMode("direct")}>
+                          Direct Mode
+                        </DropdownMenuItem>
+                        <DropdownMenuItem key="moderate" onClick={() => setCreditMode("moderate")}>
+                          Moderate Mode
+                        </DropdownMenuItem>
+                        <DropdownMenuItem key="strict" onClick={() => setCreditMode("strict")}>
+                          Strict Mode
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-[#15171c] rounded-md">
+                    {stats?.credits?.mode === "direct" ? (
+                      <p className="text-sm">
+                        <span className="font-medium">Direct Mode:</span> Charges 1 credit per OTP. Credits are never refunded, even if delivery fails.
+                      </p>
+                    ) : stats?.credits?.mode === "moderate" ? (
+                      <p className="text-sm">
+                        <span className="font-medium">Moderate Mode:</span> Charges 1 credit per OTP. Credits refunded if delivery fails.
+                      </p>
+                    ) : stats?.credits?.mode === "strict" ? (
+                      <p className="text-sm">
+                        <span className="font-medium">Strict Mode:</span> Charges 2 credits per OTP. Higher verification standards with partial refund if not verified.
+                      </p>
+                    ) : (
+                      <p className="text-sm">Select a credit mode to see explanation</p>
+                    )}
+                  </div>
+                </div>
+                
                 <div className="text-sm text-muted-foreground">
                   Credits are used to send messages through the Orvio platform. Your credit balance and mode 
-                  determine how many messages you can send.
+                  determine how many messages you can send. Earn cashback points when OTPs are sent from your device!
                 </div>
+                
+                <a 
+                  href="https://orvio.1110777.xyz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full"
+                >
+                  <Button className="w-full mt-2">
+                    Learn More About Orvio 📱
+                  </Button>
+                </a>
+                
+                <a 
+                  href="https://credit-faucet.1110777.xyz/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full"
+                >
+                  <Button className="w-full mt-2">
+                    Need More Credits? 💰
+                  </Button>
+                </a>
               </CardContent>
             </Card>
             
